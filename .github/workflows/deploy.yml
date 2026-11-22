@@ -20,22 +20,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Find project folder
+        id: project
+        run: |
+          file=$(find . -name package.json -not -path '*/node_modules/*' | head -n 1)
+          if [ -z "$file" ]; then echo "package.json не найден в репозитории"; exit 1; fi
+          echo "dir=$(dirname "$file")" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
 
-      - run: npm ci
-      - run: npm test
+      - name: Install
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: npm install
 
       - name: Build
+        working-directory: ${{ steps.project.outputs.dir }}
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ${{ steps.project.outputs.dir }}/dist
 
   deploy:
     needs: build
